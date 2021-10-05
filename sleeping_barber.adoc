@@ -1,0 +1,88 @@
+= Problema del Barbero Durmiente
+
+El problema del barbero durmiente recrea un escenario adecuado para modelar las
+interacciones y sincronización entre procesos.
+
+La barbería tiene un barbero, una silla de barbero, y _n_ sillas en la sala de espera.
+Si no hay clientes presentes, el barbero duerme (descansa) en la silla de barbero.
+
+Cuando llega un cliente, debe despertar al barbero. Si llegan más clientes mientras
+el barbero está atendiendo, éstos esperan en las sillas (si hay sillas disponibles)
+o se van del local.
+
+== Análisis
+
+Intervienen 2 actores: barbero y cliente. En el local está la silla de barbero,
+y las _n_ sillas de la sala de espera.
+
+En lenguaje coloquial, las acciones de cada actor se pueden bosquejar como sigue
+
+----
+Barbero:
+    durante el día de trabajo
+        si hay un cliente esperando
+            cliente ocupa la silla del barbero
+            barbero corta el pelo
+        sino
+            duerme en la silla
+----
+
+----
+Cliente:
+    entra en el local
+    si el barbero está durmiendo
+        despierta al barbero
+        ocupa la silla
+        recibe el corte de pelo
+    sino
+        si hay lugar en la sala de espera
+            se sienta a esperar
+        sino
+            se retira del local
+----
+
+== Implementación
+
+Para la solución de este problema se requieren 3 semáforos
+
+* _clientes_: usado para llevar la cantidad de clientes en sala de espera
+* _barbero_: usado para llevar la cantidad de barberos libres
+* _mutex_: usado para la exclusión mutua al actualizar la cantidad de clientes en espera
+
+Los libros usan una variable extra para llevar la cuenta de lugares disponibles 
+(u ocupados) en la sala de espera, que básicamente coincide con el semáforo de clientes.
+
+----
+def barbero()
+
+    while true {
+        wait(customers) // blocked until a customer arrives
+
+        // begin critical section
+        wait(mutex)
+        available = available + 1
+        signal(barber)
+        signal(mutex)
+        // end critical section
+
+        cut_hair()
+    }
+----
+
+----
+def customer()
+
+    wait(mutex)
+    if (available) {
+        available = available - 1
+        signal(customers)
+        signal(mutex)
+
+        wait(barber)
+        get_hair_cut()
+    } else {
+        signal(mutex)
+    }
+    
+    leave_shop()
+----
